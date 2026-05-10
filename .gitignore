@@ -1,7 +1,11 @@
 # Entorno virtual
 .venv/
-venv/
-env/
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
 
 # Imágenes del dataset (demasiado pesadas para el repo)
 data/train/
