@@ -1,0 +1,31 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Imágenes del dataset (demasiado pesadas para el repo)
+data/train/
+data/val/
+data/test/
+
+# Pesos del modelo entrenado
+models/*.pth
+models/*.pt
+
+# Gráficas generadas automáticamente
+models/*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
