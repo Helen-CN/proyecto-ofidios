@@ -15,6 +15,7 @@ import numpy as np
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from collections import deque
 
 # Importamos la configuración y el modelo de nuestro proyecto
 from config import BASE_DIR, DEVICE
@@ -41,62 +42,54 @@ def cargar_modelo():
     return model
 
 def procesar_video(origen_video, modelo, umbral_alerta=0.85):
-    """
-    Captura video de la cámara o de un archivo y ejecuta inferencia frame por frame.
-    """
     cap = cv2.VideoCapture(origen_video)
-    
     if not cap.isOpened():
         messagebox.showerror("Error", f"No se pudo abrir la fuente de video:\n{origen_video}")
         return
 
-    print(f"\nAnalizando: {origen_video}")
-    print("Presiona la tecla 'q' en la ventana de video para salir al menú.")
-
     tiempo_previo = 0
+    
+    # Creamos un historial para los últimos 8 fotogramas
+    historial_probabilidades = deque(maxlen=8)
     
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("Fin del video o conexión perdida.")
             break
             
-        # 1. Calcular FPS
         tiempo_actual = time.time()
         fps = 1 / (tiempo_actual - tiempo_previo) if (tiempo_actual - tiempo_previo) > 0 else 0
         tiempo_previo = tiempo_actual
 
-        # 2. Preprocesamiento del Frame
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img_pil = Image.fromarray(frame_rgb)
         input_tensor = inference_transforms(img_pil).unsqueeze(0).to(DEVICE)
 
-        # 3. Inferencia
         with torch.no_grad():
             salidas = modelo(input_tensor)
             probabilidades = F.softmax(salidas, dim=1)[0]
-            # Asumiendo que 'cascabel' es la clase 0
-            prob_cascabel = probabilidades[0].item()
+            prob_actual = probabilidades[0].item()
+        
+        # ─── AQUÍ ESTÁ EL TRUCO DE SUAVIZADO ───
+        historial_probabilidades.append(prob_actual)
+        prob_suave = sum(historial_probabilidades) / len(historial_probabilidades)
+        # ───────────────────────────────────────
 
-        # 4. Lógica Visual de Alerta
-        color_caja = (0, 255, 0) # Verde
+        color_caja = (0, 255, 0) 
         texto_alerta = "Despejado"
         
-        if prob_cascabel >= umbral_alerta:
-            color_caja = (0, 0, 255) # Rojo en BGR
-            texto_alerta = f"¡ALERTA CASCABEL! {prob_cascabel*100:.1f}%"
-            # Borde rojo en la pantalla
+        # Evaluamos usando la probabilidad suavizada, no la instantánea
+        if prob_suave >= umbral_alerta:
+            color_caja = (0, 0, 255) 
+            texto_alerta = f"¡ALERTA CASCABEL! {prob_suave*100:.1f}%"
             cv2.rectangle(frame, (0, 0), (frame.shape[1], frame.shape[0]), color_caja, 10)
 
-        # Panel superior de información
+        # (El resto de tu lógica visual y cv2.imshow se mantiene igual)
         cv2.rectangle(frame, (10, 10), (450, 80), (0, 0, 0), -1) 
         cv2.putText(frame, texto_alerta, (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, color_caja, 2)
         cv2.putText(frame, f"FPS: {fps:.1f}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-
-        # 5. Mostrar frame
+        
         cv2.imshow('Monitor de Seguridad Ofidios', frame)
-
-        # Salir con 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -138,17 +131,7 @@ class AplicacionOfidios:
         frame_botones = tk.Frame(root, bg="#f0f0f0")
         frame_botones.pack(pady=10)
 
-        # Botón 1: Cámara
-        btn_camara = tk.Button(
-            frame_botones, 
-            text="🎥 Usar Cámara", 
-            font=("Arial", 11), 
-            width=15, 
-            cursor="hand2",
-            command=self.iniciar_camara
-        )
-        btn_camara.grid(row=0, column=0, padx=10)
-
+   
         # Botón 2: Video
         btn_video = tk.Button(
             frame_botones, 
