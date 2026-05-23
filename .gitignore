@@ -32,4 +32,6 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
-*.swp
+*.swpdata/ 
+*.mp4 
+data/ 
