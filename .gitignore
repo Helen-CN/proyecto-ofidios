@@ -33,3 +33,5 @@ Thumbs.db
 .vscode/
 .idea/
 *.swpdata/ 
+*.mp4 
+data/ 
